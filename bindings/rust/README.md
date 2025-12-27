@@ -171,14 +171,26 @@ impl BlockExecutor {
         }
         
         // ============================================================
-        // 阶段 2: 同步写入 - 提交整个区块的状态变更
+        // 阶段 2: 同步写入 - 提交区块的状态变更
         // ============================================================
         
+        // 方式 A: 批量写入（推荐，性能更好）
         let new_root = self.db.upsert_with_root(
             self.current_root.as_ref(),  // 基于上一个区块的 root
             &all_updates,                 // 整个区块的所有变更
             block_number,                 // version = block_number
         )?;
+        
+        // 方式 B: 增量写入（如果需要每笔交易后的中间状态）
+        // let mut current = self.current_root.clone();
+        // for tx_updates in per_tx_updates {
+        //     current = Some(self.db.upsert_with_root(
+        //         current.as_ref(),
+        //         &tx_updates,
+        //         block_number,  // 同一个 version
+        //     )?);
+        // }
+        // let new_root = current.unwrap();
         
         let state_root = new_root.root_hash();
         
@@ -348,6 +360,36 @@ let root = db.upsert(&updates, version)?;
 // 方式 2: 基于已有状态增量更新（常规区块）
 let root = db.upsert_with_root(Some(&prev_root), &updates, version)?;
 ```
+
+### 增量写入 vs 批量写入
+
+MonadDB 支持两种写入模式：
+
+**批量写入**（推荐）：收集所有更新，一次 upsert
+```rust
+let mut all_updates = Vec::new();
+for tx in block.transactions {
+    all_updates.extend(execute_tx(tx));
+}
+let root = db.upsert_with_root(Some(&prev_root), &all_updates, block_number)?;
+```
+
+**增量写入**：每笔交易后立即 upsert
+```rust
+let mut current_root = prev_root;
+for tx in block.transactions {
+    let updates = execute_tx(tx);
+    current_root = db.upsert_with_root(Some(&current_root), &updates, block_number)?;
+}
+// current_root 是最终状态
+```
+
+| 模式 | 性能 | 适用场景 |
+|------|------|---------|
+| **批量写入** | ⚡ 更快（MPT 路径合并优化） | 大多数场景 |
+| **增量写入** | 稍慢（每次遍历 MPT） | 需要中间状态、调试 |
+
+**注意**：两种模式都使用相同的 `version` 号，只有最后一个 root 会被持久化索引。
 
 ### Update 构建
 
