@@ -1,0 +1,20 @@
+[package]
+name = "nomad-mpt-sys"
+version = "0.1.0"
+authors = ["Monad Contributors"]
+edition = "2021"
+description = "Raw FFI bindings to Monad MPT (Merkle Patricia Trie)"
+license = "GPL-3.0"
+
+[dependencies]
+cxx = "1.0"
+
+[build-dependencies]
+cmake = "0.1"
+cxx-build = "1.0"
+pkg-config = "0.3"
+cc = "1.0"
+
+[features]
+default = []
+hugetlbfs = []  # 可选：大页内存支持

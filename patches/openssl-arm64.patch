@@ -1,0 +1,2373 @@
+--- /dev/null
++++ third_party/openssl/crypto/sha/asm/arm_arch.h
+@@ -0,0 +1,215 @@
++/*
++ * Copyright 2011-2025 The OpenSSL Project Authors. All Rights Reserved.
++ *
++ * Licensed under the Apache License 2.0 (the "License").  You may not use
++ * this file except in compliance with the License.  You can obtain a copy
++ * in the file LICENSE in the source distribution or at
++ * https://www.openssl.org/source/license.html
++ */
++
++#ifndef OSSL_CRYPTO_ARM_ARCH_H
++#define OSSL_CRYPTO_ARM_ARCH_H
++
++#if !defined(__ARM_ARCH__)
++#if defined(__CC_ARM)
++#define __ARM_ARCH__ __TARGET_ARCH_ARM
++#if defined(__BIG_ENDIAN)
++#define __ARMEB__
++#else
++#define __ARMEL__
++#endif
++#elif defined(__GNUC__)
++#if defined(__aarch64__)
++#define __ARM_ARCH__ 8
++/*
++ * Why doesn't gcc define __ARM_ARCH__? Instead it defines
++ * bunch of below macros. See all_architectures[] table in
++ * gcc/config/arm/arm.c. On a side note it defines
++ * __ARMEL__/__ARMEB__ for little-/big-endian.
++ */
++#elif defined(__ARM_ARCH)
++#define __ARM_ARCH__ __ARM_ARCH
++#elif defined(__ARM_ARCH_8A__)
++#define __ARM_ARCH__ 8
++#elif defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
++#define __ARM_ARCH__ 7
++#elif defined(__ARM_ARCH_6__) || defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__) || defined(__ARM_ARCH_6T2__)
++#define __ARM_ARCH__ 6
++#elif defined(__ARM_ARCH_5__) || defined(__ARM_ARCH_5T__) || defined(__ARM_ARCH_5E__) || defined(__ARM_ARCH_5TE__) || defined(__ARM_ARCH_5TEJ__)
++#define __ARM_ARCH__ 5
++#elif defined(__ARM_ARCH_4__) || defined(__ARM_ARCH_4T__)
++#define __ARM_ARCH__ 4
++#else
++#error "unsupported ARM architecture"
++#endif
++#elif defined(__ARM_ARCH)
++#define __ARM_ARCH__ __ARM_ARCH
++#endif
++#endif
++
++#if !defined(__ARM_MAX_ARCH__)
++#define __ARM_MAX_ARCH__ __ARM_ARCH__
++#endif
++
++#if __ARM_MAX_ARCH__ < __ARM_ARCH__
++#error "__ARM_MAX_ARCH__ can't be less than __ARM_ARCH__"
++#elif __ARM_MAX_ARCH__ != __ARM_ARCH__
++#if __ARM_ARCH__ < 7 && __ARM_MAX_ARCH__ >= 7 && defined(__ARMEB__)
++#error "can't build universal big-endian binary"
++#endif
++#endif
++
++#ifndef __ASSEMBLER__
++extern unsigned int OPENSSL_armcap_P;
++extern unsigned int OPENSSL_arm_midr;
++extern unsigned int OPENSSL_armv8_rsa_neonized;
++#endif
++
++#define ARMV7_NEON (1 << 0)
++#define ARMV7_TICK (1 << 1)
++#define ARMV8_AES (1 << 2)
++#define ARMV8_SHA1 (1 << 3)
++#define ARMV8_SHA256 (1 << 4)
++#define ARMV8_PMULL (1 << 5)
++#define ARMV8_SHA512 (1 << 6)
++#define ARMV8_CPUID (1 << 7)
++#define ARMV8_RNG (1 << 8)
++#define ARMV8_SM3 (1 << 9)
++#define ARMV8_SM4 (1 << 10)
++#define ARMV8_SHA3 (1 << 11)
++#define ARMV8_UNROLL8_EOR3 (1 << 12)
++#define ARMV8_SVE (1 << 13)
++#define ARMV9_SVE2 (1 << 14)
++#define ARMV8_HAVE_SHA3_AND_WORTH_USING (1 << 15)
++#define ARMV8_UNROLL12_EOR3 (1 << 16)
++#define ARMV9_SVE2_POLY1305 (1 << 17)
++
++/*
++ * MIDR_EL1 system register
++ *
++ * 63___ _ ___32_31___ _ ___24_23_____20_19_____16_15__ _ __4_3_______0
++ * |            |             |         |         |          |        |
++ * |RES0        | Implementer | Variant | Arch    | PartNum  |Revision|
++ * |____ _ _____|_____ _ _____|_________|_______ _|____ _ ___|________|
++ *
++ */
++
++#define ARM_CPU_IMP_ARM 0x41
++#define HISI_CPU_IMP 0x48
++#define ARM_CPU_IMP_QCOMM 0x51
++#define ARM_CPU_IMP_APPLE 0x61
++#define ARM_CPU_IMP_MICROSOFT 0x6D
++#define ARM_CPU_IMP_AMPERE 0xC0
++
++#define ARM_CPU_PART_CORTEX_A72 0xD08
++#define ARM_CPU_PART_N1 0xD0C
++#define ARM_CPU_PART_V1 0xD40
++#define ARM_CPU_PART_N2 0xD49
++#define HISI_CPU_PART_KP920 0xD01
++#define ARM_CPU_PART_V2 0xD4F
++#define ARM_CPU_PART_N3 0xD8E
++#define ARM_CPU_PART_V3_AE 0xD83
++#define ARM_CPU_PART_V3 0xD84
++
++#define QCOM_CPU_PART_ORYON_X1 0x001
++
++#define APPLE_CPU_PART_M1_ICESTORM 0x022
++#define APPLE_CPU_PART_M1_FIRESTORM 0x023
++#define APPLE_CPU_PART_M1_ICESTORM_PRO 0x024
++#define APPLE_CPU_PART_M1_FIRESTORM_PRO 0x025
++#define APPLE_CPU_PART_M1_ICESTORM_MAX 0x028
++#define APPLE_CPU_PART_M1_FIRESTORM_MAX 0x029
++#define APPLE_CPU_PART_M2_BLIZZARD 0x032
++#define APPLE_CPU_PART_M2_AVALANCHE 0x033
++#define APPLE_CPU_PART_M2_BLIZZARD_PRO 0x034
++#define APPLE_CPU_PART_M2_AVALANCHE_PRO 0x035
++#define APPLE_CPU_PART_M2_BLIZZARD_MAX 0x038
++#define APPLE_CPU_PART_M2_AVALANCHE_MAX 0x039
++
++#define MICROSOFT_CPU_PART_COBALT_100 0xD49
++
++#define MIDR_PARTNUM_SHIFT 4
++#define MIDR_PARTNUM_MASK (0xfffU << MIDR_PARTNUM_SHIFT)
++#define MIDR_PARTNUM(midr) \
++    (((midr) & MIDR_PARTNUM_MASK) >> MIDR_PARTNUM_SHIFT)
++
++#define MIDR_IMPLEMENTER_SHIFT 24
++#define MIDR_IMPLEMENTER_MASK (0xffU << MIDR_IMPLEMENTER_SHIFT)
++#define MIDR_IMPLEMENTER(midr) \
++    (((midr) & MIDR_IMPLEMENTER_MASK) >> MIDR_IMPLEMENTER_SHIFT)
++
++#define MIDR_ARCHITECTURE_SHIFT 16
++#define MIDR_ARCHITECTURE_MASK (0xfU << MIDR_ARCHITECTURE_SHIFT)
++#define MIDR_ARCHITECTURE(midr) \
++    (((midr) & MIDR_ARCHITECTURE_MASK) >> MIDR_ARCHITECTURE_SHIFT)
++
++#define MIDR_CPU_MODEL_MASK \
++    (MIDR_IMPLEMENTER_MASK | MIDR_PARTNUM_MASK | MIDR_ARCHITECTURE_MASK)
++
++#define MIDR_CPU_MODEL(imp, partnum) \
++    (((imp) << MIDR_IMPLEMENTER_SHIFT) | (0xfU << MIDR_ARCHITECTURE_SHIFT) | ((partnum) << MIDR_PARTNUM_SHIFT))
++
++#define MIDR_IS_CPU_MODEL(midr, imp, partnum) \
++    (((midr) & MIDR_CPU_MODEL_MASK) == MIDR_CPU_MODEL(imp, partnum))
++
++#if defined(__ASSEMBLER__)
++
++/*
++ * Support macros for
++ *   - Armv8.3-A Pointer Authentication and
++ *   - Armv8.5-A Branch Target Identification
++ * features which require emitting a .note.gnu.property section with the
++ * appropriate architecture-dependent feature bits set.
++ * Read more: "ELF for the Arm® 64-bit Architecture"
++ */
++
++#if defined(__ARM_FEATURE_BTI_DEFAULT) && __ARM_FEATURE_BTI_DEFAULT == 1
++#define GNU_PROPERTY_AARCH64_BTI (1 << 0) /* Has Branch Target Identification */
++#define AARCH64_VALID_CALL_TARGET hint #34 /* BTI 'c' */
++#else
++#define GNU_PROPERTY_AARCH64_BTI 0 /* No Branch Target Identification */
++#define AARCH64_VALID_CALL_TARGET
++#endif
++
++#if defined(__ARM_FEATURE_PAC_DEFAULT) && (__ARM_FEATURE_PAC_DEFAULT & 1) == 1 /* Signed with A-key */
++#define GNU_PROPERTY_AARCH64_POINTER_AUTH \
++    (1 << 1) /* Has Pointer Authentication */
++#define AARCH64_SIGN_LINK_REGISTER hint #25 /* PACIASP */
++#define AARCH64_VALIDATE_LINK_REGISTER hint #29 /* AUTIASP */
++#elif defined(__ARM_FEATURE_PAC_DEFAULT) && (__ARM_FEATURE_PAC_DEFAULT & 2) == 2 /* Signed with B-key */
++#define GNU_PROPERTY_AARCH64_POINTER_AUTH \
++    (1 << 1) /* Has Pointer Authentication */
++#define AARCH64_SIGN_LINK_REGISTER hint #27 /* PACIBSP */
++#define AARCH64_VALIDATE_LINK_REGISTER hint #31 /* AUTIBSP */
++#else
++#define GNU_PROPERTY_AARCH64_POINTER_AUTH 0 /* No Pointer Authentication */
++#if GNU_PROPERTY_AARCH64_BTI != 0
++#define AARCH64_SIGN_LINK_REGISTER AARCH64_VALID_CALL_TARGET
++#else
++#define AARCH64_SIGN_LINK_REGISTER
++#endif
++#define AARCH64_VALIDATE_LINK_REGISTER
++#endif
++
++#if GNU_PROPERTY_AARCH64_POINTER_AUTH != 0 || GNU_PROPERTY_AARCH64_BTI != 0
++/* clang-format off */
++.pushsection .note.gnu.property, "a";
++/* clang-format on */
++.balign 8;
++.long 4;
++.long 0x10;
++.long 0x5;
++.asciz "GNU";
++.long 0xc0000000; /* GNU_PROPERTY_AARCH64_FEATURE_1_AND */
++.long 4;
++.long(GNU_PROPERTY_AARCH64_POINTER_AUTH | GNU_PROPERTY_AARCH64_BTI);
++.long 0;
++.popsection;
++#endif
++
++#endif /* defined __ASSEMBLER__ */
++
++#define IS_CPU_SUPPORT_UNROLL8_EOR3() \
++    (OPENSSL_armcap_P & ARMV8_UNROLL8_EOR3)
++
++#endif
+--- /dev/null
++++ third_party/openssl/crypto/sha/asm/keccak1600-armv8.S
+@@ -0,0 +1,1017 @@
++#include "arm_arch.h"
++
++.section	.rodata
++
++.align	8	// strategic alignment and padding that allows to use
++		// address value as loop termination condition...
++.quad	0,0,0,0,0,0,0,0
++.type	iotas,%object
++iotas:
++.quad	0x0000000000000001
++.quad	0x0000000000008082
++.quad	0x800000000000808a
++.quad	0x8000000080008000
++.quad	0x000000000000808b
++.quad	0x0000000080000001
++.quad	0x8000000080008081
++.quad	0x8000000000008009
++.quad	0x000000000000008a
++.quad	0x0000000000000088
++.quad	0x0000000080008009
++.quad	0x000000008000000a
++.quad	0x000000008000808b
++.quad	0x800000000000008b
++.quad	0x8000000000008089
++.quad	0x8000000000008003
++.quad	0x8000000000008002
++.quad	0x8000000000000080
++.quad	0x000000000000800a
++.quad	0x800000008000000a
++.quad	0x8000000080008081
++.quad	0x8000000000008080
++.quad	0x0000000080000001
++.quad	0x8000000080008008
++.size	iotas,.-iotas
++.text
++
++.type	KeccakF1600_int,%function
++.align	5
++KeccakF1600_int:
++	AARCH64_SIGN_LINK_REGISTER
++	adrp	x28,iotas
++	add	x28,x28,#:lo12:iotas
++	stp	x28,x30,[sp,#16]		// 32 bytes on top are mine
++	b	.Loop
++.align	4
++.Loop:
++	////////////////////////////////////////// Theta
++	eor	x26,x0,x5
++	stp	x4,x9,[sp,#0]	// offload pair...
++	eor	x27,x1,x6
++	eor	x28,x2,x7
++	eor	x30,x3,x8
++	eor	x4,x4,x9
++	eor	x26,x26,x10
++	eor	x27,x27,x11
++	eor	x28,x28,x12
++	eor	x30,x30,x13
++	eor	x4,x4,x14
++	eor	x26,x26,x15
++	eor	x27,x27,x16
++	eor	x28,x28,x17
++	eor	x30,x30,x25
++	eor	x4,x4,x19
++	eor	x26,x26,x20
++	eor	x28,x28,x22
++	eor	x27,x27,x21
++	eor	x30,x30,x23
++	eor	x4,x4,x24
++
++	eor	x9,x26,x28,ror#63
++
++	eor	x1,x1,x9
++	eor	x6,x6,x9
++	eor	x11,x11,x9
++	eor	x16,x16,x9
++	eor	x21,x21,x9
++
++	eor	x9,x27,x30,ror#63
++	eor	x28,x28,x4,ror#63
++	eor	x30,x30,x26,ror#63
++	eor	x4,x4,x27,ror#63
++
++	eor	x27,   x2,x9		// mov	x27,x2
++	eor	x7,x7,x9
++	eor	x12,x12,x9
++	eor	x17,x17,x9
++	eor	x22,x22,x9
++
++	eor	x0,x0,x4
++	eor	x5,x5,x4
++	eor	x10,x10,x4
++	eor	x15,x15,x4
++	eor	x20,x20,x4
++	ldp	x4,x9,[sp,#0]	// re-load offloaded data
++	eor	x26,   x3,x28		// mov	x26,x3
++	eor	x8,x8,x28
++	eor	x13,x13,x28
++	eor	x25,x25,x28
++	eor	x23,x23,x28
++
++	eor	x28,   x4,x30		// mov	x28,x4
++	eor	x9,x9,x30
++	eor	x14,x14,x30
++	eor	x19,x19,x30
++	eor	x24,x24,x30
++
++	////////////////////////////////////////// Rho+Pi
++	mov	x30,x1
++	ror	x1,x6,#64-44
++	//mov	x27,x2
++	ror	x2,x12,#64-43
++	//mov	x26,x3
++	ror	x3,x25,#64-21
++	//mov	x28,x4
++	ror	x4,x24,#64-14
++
++	ror	x6,x9,#64-20
++	ror	x12,x13,#64-25
++	ror	x25,x17,#64-15
++	ror	x24,x21,#64-2
++
++	ror	x9,x22,#64-61
++	ror	x13,x19,#64-8
++	ror	x17,x11,#64-10
++	ror	x21,x8,#64-55
++
++	ror	x22,x14,#64-39
++	ror	x19,x23,#64-56
++	ror	x11,x7,#64-6
++	ror	x8,x16,#64-45
++
++	ror	x14,x20,#64-18
++	ror	x23,x15,#64-41
++	ror	x7,x10,#64-3
++	ror	x16,x5,#64-36
++
++	ror	x5,x26,#64-28
++	ror	x10,x30,#64-1
++	ror	x15,x28,#64-27
++	ror	x20,x27,#64-62
++
++	////////////////////////////////////////// Chi+Iota
++	bic	x26,x2,x1
++	bic	x27,x3,x2
++	bic	x28,x0,x4
++	bic	x30,x1,x0
++	eor	x0,x0,x26
++	bic	x26,x4,x3
++	eor	x1,x1,x27
++	ldr	x27,[sp,#16]
++	eor	x3,x3,x28
++	eor	x4,x4,x30
++	eor	x2,x2,x26
++	ldr	x30,[x27],#8		// Iota[i++]
++
++	bic	x26,x7,x6
++	tst	x27,#255			// are we done?
++	str	x27,[sp,#16]
++	bic	x27,x8,x7
++	bic	x28,x5,x9
++	eor	x0,x0,x30		// A[0][0] ^= Iota
++	bic	x30,x6,x5
++	eor	x5,x5,x26
++	bic	x26,x9,x8
++	eor	x6,x6,x27
++	eor	x8,x8,x28
++	eor	x9,x9,x30
++	eor	x7,x7,x26
++
++	bic	x26,x12,x11
++	bic	x27,x13,x12
++	bic	x28,x10,x14
++	bic	x30,x11,x10
++	eor	x10,x10,x26
++	bic	x26,x14,x13
++	eor	x11,x11,x27
++	eor	x13,x13,x28
++	eor	x14,x14,x30
++	eor	x12,x12,x26
++
++	bic	x26,x17,x16
++	bic	x27,x25,x17
++	bic	x28,x15,x19
++	bic	x30,x16,x15
++	eor	x15,x15,x26
++	bic	x26,x19,x25
++	eor	x16,x16,x27
++	eor	x25,x25,x28
++	eor	x19,x19,x30
++	eor	x17,x17,x26
++
++	bic	x26,x22,x21
++	bic	x27,x23,x22
++	bic	x28,x20,x24
++	bic	x30,x21,x20
++	eor	x20,x20,x26
++	bic	x26,x24,x23
++	eor	x21,x21,x27
++	eor	x23,x23,x28
++	eor	x24,x24,x30
++	eor	x22,x22,x26
++
++	bne	.Loop
++
++	ldr	x30,[sp,#24]
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	KeccakF1600_int,.-KeccakF1600_int
++
++.type	KeccakF1600,%function
++.align	5
++KeccakF1600:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-128]!
++	add	x29,sp,#0
++	stp	x19,x20,[sp,#16]
++	stp	x21,x22,[sp,#32]
++	stp	x23,x24,[sp,#48]
++	stp	x25,x26,[sp,#64]
++	stp	x27,x28,[sp,#80]
++	sub	sp,sp,#48
++
++	str	x0,[sp,#32]			// offload argument
++	mov	x26,x0
++	ldp	x0,x1,[x0,#16*0]
++	ldp	x2,x3,[x26,#16*1]
++	ldp	x4,x5,[x26,#16*2]
++	ldp	x6,x7,[x26,#16*3]
++	ldp	x8,x9,[x26,#16*4]
++	ldp	x10,x11,[x26,#16*5]
++	ldp	x12,x13,[x26,#16*6]
++	ldp	x14,x15,[x26,#16*7]
++	ldp	x16,x17,[x26,#16*8]
++	ldp	x25,x19,[x26,#16*9]
++	ldp	x20,x21,[x26,#16*10]
++	ldp	x22,x23,[x26,#16*11]
++	ldr	x24,[x26,#16*12]
++
++	bl	KeccakF1600_int
++
++	ldr	x26,[sp,#32]
++	stp	x0,x1,[x26,#16*0]
++	stp	x2,x3,[x26,#16*1]
++	stp	x4,x5,[x26,#16*2]
++	stp	x6,x7,[x26,#16*3]
++	stp	x8,x9,[x26,#16*4]
++	stp	x10,x11,[x26,#16*5]
++	stp	x12,x13,[x26,#16*6]
++	stp	x14,x15,[x26,#16*7]
++	stp	x16,x17,[x26,#16*8]
++	stp	x25,x19,[x26,#16*9]
++	stp	x20,x21,[x26,#16*10]
++	stp	x22,x23,[x26,#16*11]
++	str	x24,[x26,#16*12]
++
++	ldp	x19,x20,[x29,#16]
++	add	sp,sp,#48
++	ldp	x21,x22,[x29,#32]
++	ldp	x23,x24,[x29,#48]
++	ldp	x25,x26,[x29,#64]
++	ldp	x27,x28,[x29,#80]
++	ldp	x29,x30,[sp],#128
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	KeccakF1600,.-KeccakF1600
++
++.globl	SHA3_absorb
++.type	SHA3_absorb,%function
++.align	5
++SHA3_absorb:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-128]!
++	add	x29,sp,#0
++	stp	x19,x20,[sp,#16]
++	stp	x21,x22,[sp,#32]
++	stp	x23,x24,[sp,#48]
++	stp	x25,x26,[sp,#64]
++	stp	x27,x28,[sp,#80]
++	sub	sp,sp,#64
++
++	stp	x0,x1,[sp,#32]			// offload arguments
++	stp	x2,x3,[sp,#48]
++
++	mov	x26,x0			// uint64_t A[5][5]
++	mov	x27,x1			// const void *inp
++	mov	x28,x2			// size_t len
++	mov	x30,x3			// size_t bsz
++	ldp	x0,x1,[x26,#16*0]
++	ldp	x2,x3,[x26,#16*1]
++	ldp	x4,x5,[x26,#16*2]
++	ldp	x6,x7,[x26,#16*3]
++	ldp	x8,x9,[x26,#16*4]
++	ldp	x10,x11,[x26,#16*5]
++	ldp	x12,x13,[x26,#16*6]
++	ldp	x14,x15,[x26,#16*7]
++	ldp	x16,x17,[x26,#16*8]
++	ldp	x25,x19,[x26,#16*9]
++	ldp	x20,x21,[x26,#16*10]
++	ldp	x22,x23,[x26,#16*11]
++	ldr	x24,[x26,#16*12]
++	b	.Loop_absorb
++
++.align	4
++.Loop_absorb:
++	subs	x26,x28,x30		// len - bsz
++	blo	.Labsorbed
++
++	str	x26,[sp,#48]			// save len - bsz
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x0,x0,x26
++	cmp	x30,#8*(0+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x1,x1,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x2,x2,x26
++	cmp	x30,#8*(2+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x3,x3,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x4,x4,x26
++	cmp	x30,#8*(4+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x5,x5,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x6,x6,x26
++	cmp	x30,#8*(6+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x7,x7,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x8,x8,x26
++	cmp	x30,#8*(8+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x9,x9,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x10,x10,x26
++	cmp	x30,#8*(10+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x11,x11,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x12,x12,x26
++	cmp	x30,#8*(12+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x13,x13,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x14,x14,x26
++	cmp	x30,#8*(14+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x15,x15,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x16,x16,x26
++	cmp	x30,#8*(16+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x17,x17,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x25,x25,x26
++	cmp	x30,#8*(18+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x19,x19,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x20,x20,x26
++	cmp	x30,#8*(20+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x21,x21,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x22,x22,x26
++	cmp	x30,#8*(22+2)
++	blo	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x23,x23,x26
++	beq	.Lprocess_block
++	ldr	x26,[x27],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	x26,x26
++#endif
++	eor	x24,x24,x26
++
++.Lprocess_block:
++	str	x27,[sp,#40]			// save inp
++
++	bl	KeccakF1600_int
++
++	ldr	x27,[sp,#40]			// restore arguments
++	ldp	x28,x30,[sp,#48]
++	b	.Loop_absorb
++
++.align	4
++.Labsorbed:
++	ldr	x27,[sp,#32]
++	stp	x0,x1,[x27,#16*0]
++	stp	x2,x3,[x27,#16*1]
++	stp	x4,x5,[x27,#16*2]
++	stp	x6,x7,[x27,#16*3]
++	stp	x8,x9,[x27,#16*4]
++	stp	x10,x11,[x27,#16*5]
++	stp	x12,x13,[x27,#16*6]
++	stp	x14,x15,[x27,#16*7]
++	stp	x16,x17,[x27,#16*8]
++	stp	x25,x19,[x27,#16*9]
++	stp	x20,x21,[x27,#16*10]
++	stp	x22,x23,[x27,#16*11]
++	str	x24,[x27,#16*12]
++
++	mov	x0,x28			// return value
++	ldp	x19,x20,[x29,#16]
++	add	sp,sp,#64
++	ldp	x21,x22,[x29,#32]
++	ldp	x23,x24,[x29,#48]
++	ldp	x25,x26,[x29,#64]
++	ldp	x27,x28,[x29,#80]
++	ldp	x29,x30,[sp],#128
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_absorb,.-SHA3_absorb
++.globl	SHA3_squeeze
++.type	SHA3_squeeze,%function
++.align	5
++SHA3_squeeze:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-48]!
++	add	x29,sp,#0
++	stp	x19,x20,[sp,#16]
++	stp	x21,x22,[sp,#32]
++
++	mov	x19,x0			// put aside arguments
++	mov	x20,x1
++	mov	x21,x2
++	mov	x22,x3
++	cmp	w4, #0				// w4 = 'next' argument
++	bne	.Lnext_block
++
++.Loop_squeeze:
++	ldr	x4,[x0],#8
++	cmp	x21,#8
++	blo	.Lsqueeze_tail
++#ifdef	__AARCH64EB__
++	rev	x4,x4
++#endif
++	str	x4,[x20],#8
++	subs	x21,x21,#8
++	beq	.Lsqueeze_done
++
++	subs	x3,x3,#8
++	bhi	.Loop_squeeze
++.Lnext_block:
++	mov	x0,x19
++	bl	KeccakF1600
++	mov	x0,x19
++	mov	x3,x22
++	b	.Loop_squeeze
++
++.align	4
++.Lsqueeze_tail:
++	strb	w4,[x20],#1
++	lsr	x4,x4,#8
++	subs	x21,x21,#1
++	beq	.Lsqueeze_done
++	strb	w4,[x20],#1
++	lsr	x4,x4,#8
++	subs	x21,x21,#1
++	beq	.Lsqueeze_done
++	strb	w4,[x20],#1
++	lsr	x4,x4,#8
++	subs	x21,x21,#1
++	beq	.Lsqueeze_done
++	strb	w4,[x20],#1
++	lsr	x4,x4,#8
++	subs	x21,x21,#1
++	beq	.Lsqueeze_done
++	strb	w4,[x20],#1
++	lsr	x4,x4,#8
++	subs	x21,x21,#1
++	beq	.Lsqueeze_done
++	strb	w4,[x20],#1
++	lsr	x4,x4,#8
++	subs	x21,x21,#1
++	beq	.Lsqueeze_done
++	strb	w4,[x20],#1
++
++.Lsqueeze_done:
++	ldp	x19,x20,[sp,#16]
++	ldp	x21,x22,[sp,#32]
++	ldp	x29,x30,[sp],#48
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_squeeze,.-SHA3_squeeze
++.type	KeccakF1600_ce,%function
++.align	5
++KeccakF1600_ce:
++	mov	x9,#24
++	adrp	x10,iotas
++	add	x10,x10,#:lo12:iotas
++	b	.Loop_ce
++.align	4
++.Loop_ce:
++	////////////////////////////////////////////////// Theta
++.inst	0xce0f2a99	//eor3 v25.16b,v20.16b,v15.16b,v10.16b
++.inst	0xce102eba	//eor3 v26.16b,v21.16b,v16.16b,v11.16b
++.inst	0xce1132db	//eor3 v27.16b,v22.16b,v17.16b,v12.16b
++.inst	0xce1236fc	//eor3 v28.16b,v23.16b,v18.16b,v13.16b
++.inst	0xce133b1d	//eor3 v29.16b,v24.16b,v19.16b,v14.16b
++.inst	0xce050339	//eor3 v25.16b,v25.16b,   v5.16b,v0.16b
++.inst	0xce06075a	//eor3 v26.16b,v26.16b,   v6.16b,v1.16b
++.inst	0xce070b7b	//eor3 v27.16b,v27.16b,   v7.16b,v2.16b
++.inst	0xce080f9c	//eor3 v28.16b,v28.16b,   v8.16b,v3.16b
++.inst	0xce0913bd	//eor3 v29.16b,v29.16b,   v9.16b,v4.16b
++
++.inst	0xce7b8f3e	//rax1 v30.16b,v25.16b,v27.16b			// D[1]
++.inst	0xce7c8f5f	//rax1 v31.16b,v26.16b,v28.16b			// D[2]
++.inst	0xce7d8f7b	//rax1 v27.16b,v27.16b,v29.16b			// D[3]
++.inst	0xce798f9c	//rax1 v28.16b,v28.16b,v25.16b			// D[4]
++.inst	0xce7a8fbd	//rax1 v29.16b,v29.16b,v26.16b			// D[0]
++
++	////////////////////////////////////////////////// Theta+Rho+Pi
++.inst	0xce9efc39	//xar v25.16b,   v1.16b,v30.16b,#64-1 // C[0]=A[2][0]
++
++.inst	0xce9e50c1	//xar v1.16b,v6.16b,v30.16b,#64-44
++.inst	0xce9cb126	//xar v6.16b,v9.16b,v28.16b,#64-20
++.inst	0xce9f0ec9	//xar v9.16b,v22.16b,v31.16b,#64-61
++.inst	0xce9c65d6	//xar v22.16b,v14.16b,v28.16b,#64-39
++.inst	0xce9dba8e	//xar v14.16b,v20.16b,v29.16b,#64-18
++
++.inst	0xce9f085a	//xar v26.16b,   v2.16b,v31.16b,#64-62 // C[1]=A[4][0]
++
++.inst	0xce9f5582	//xar v2.16b,v12.16b,v31.16b,#64-43
++.inst	0xce9b9dac	//xar v12.16b,v13.16b,v27.16b,#64-25
++.inst	0xce9ce26d	//xar v13.16b,v19.16b,v28.16b,#64-8
++.inst	0xce9b22f3	//xar v19.16b,v23.16b,v27.16b,#64-56
++.inst	0xce9d5df7	//xar v23.16b,v15.16b,v29.16b,#64-41
++
++.inst	0xce9c948f	//xar v15.16b,v4.16b,v28.16b,#64-27
++
++.inst	0xce9ccb1c	//xar v28.16b,   v24.16b,v28.16b,#64-14 // D[4]=A[0][4]
++.inst	0xce9efab8	//xar v24.16b,v21.16b,v30.16b,#64-2
++.inst	0xce9b2508	//xar v8.16b,v8.16b,v27.16b,#64-55 // A[1][3]=A[4][1]
++.inst	0xce9e4e04	//xar v4.16b,v16.16b,v30.16b,#64-45 // A[0][4]=A[1][3]
++.inst	0xce9d70b0	//xar v16.16b,v5.16b,v29.16b,#64-36
++
++.inst	0xce9b9065	//xar v5.16b,v3.16b,v27.16b,#64-28
++
++	eor	v0.16b,v0.16b,v29.16b
++
++.inst	0xce9bae5b	//xar v27.16b,   v18.16b,v27.16b,#64-21 // D[3]=A[0][3]
++.inst	0xce9fc623	//xar v3.16b,v17.16b,v31.16b,#64-15 // A[0][3]=A[3][3]
++.inst	0xce9ed97e	//xar v30.16b,   v11.16b,v30.16b,#64-10 // D[1]=A[3][2]
++.inst	0xce9fe8ff	//xar v31.16b,   v7.16b,v31.16b,#64-6 // D[2]=A[2][1]
++.inst	0xce9df55d	//xar v29.16b,   v10.16b,v29.16b,#64-3 // D[0]=A[1][2]
++
++	////////////////////////////////////////////////// Chi+Iota
++.inst	0xce362354	//bcax v20.16b,v26.16b,   v22.16b,v8.16b	// A[1][3]=A[4][1]
++.inst	0xce375915	//bcax v21.16b,v8.16b,v23.16b,v22.16b	// A[1][3]=A[4][1]
++.inst	0xce385ed6	//bcax v22.16b,v22.16b,v24.16b,v23.16b
++.inst	0xce3a62f7	//bcax v23.16b,v23.16b,v26.16b,   v24.16b
++.inst	0xce286b18	//bcax v24.16b,v24.16b,v8.16b,v26.16b	// A[1][3]=A[4][1]
++
++	ld1r	{v26.2d},[x10],#8
++
++.inst	0xce330fd1	//bcax v17.16b,v30.16b,   v19.16b,v3.16b	// A[0][3]=A[3][3]
++.inst	0xce2f4c72	//bcax v18.16b,v3.16b,v15.16b,v19.16b	// A[0][3]=A[3][3]
++.inst	0xce303e73	//bcax v19.16b,v19.16b,v16.16b,v15.16b
++.inst	0xce3e41ef	//bcax v15.16b,v15.16b,v30.16b,   v16.16b
++.inst	0xce237a10	//bcax v16.16b,v16.16b,v3.16b,v30.16b	// A[0][3]=A[3][3]
++
++.inst	0xce2c7f2a	//bcax v10.16b,v25.16b,   v12.16b,v31.16b
++.inst	0xce2d33eb	//bcax v11.16b,v31.16b,   v13.16b,v12.16b
++.inst	0xce2e358c	//bcax v12.16b,v12.16b,v14.16b,v13.16b
++.inst	0xce3939ad	//bcax v13.16b,v13.16b,v25.16b,   v14.16b
++.inst	0xce3f65ce	//bcax v14.16b,v14.16b,v31.16b,   v25.16b
++
++.inst	0xce2913a7	//bcax v7.16b,v29.16b,   v9.16b,v4.16b	// A[0][4]=A[1][3]
++.inst	0xce252488	//bcax v8.16b,v4.16b,v5.16b,v9.16b	// A[0][4]=A[1][3]
++.inst	0xce261529	//bcax v9.16b,v9.16b,v6.16b,v5.16b
++.inst	0xce3d18a5	//bcax v5.16b,v5.16b,v29.16b,   v6.16b
++.inst	0xce2474c6	//bcax v6.16b,v6.16b,v4.16b,v29.16b	// A[0][4]=A[1][3]
++
++.inst	0xce207363	//bcax v3.16b,v27.16b,   v0.16b,v28.16b
++.inst	0xce210384	//bcax v4.16b,v28.16b,   v1.16b,v0.16b
++.inst	0xce220400	//bcax v0.16b,v0.16b,v2.16b,v1.16b
++.inst	0xce3b0821	//bcax v1.16b,v1.16b,v27.16b,   v2.16b
++.inst	0xce3c6c42	//bcax v2.16b,v2.16b,v28.16b,   v27.16b
++
++	eor	v0.16b,v0.16b,v26.16b
++
++	subs	x9,x9,#1
++	bne	.Loop_ce
++
++	ret
++.size	KeccakF1600_ce,.-KeccakF1600_ce
++
++.type	KeccakF1600_cext,%function
++.align	5
++KeccakF1600_cext:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-80]!
++	add	x29,sp,#0
++	stp	d8,d9,[sp,#16]		// per ABI requirement
++	stp	d10,d11,[sp,#32]
++	stp	d12,d13,[sp,#48]
++	stp	d14,d15,[sp,#64]
++	ldp	d0,d1,[x0,#8*0]
++	ldp	d2,d3,[x0,#8*2]
++	ldp	d4,d5,[x0,#8*4]
++	ldp	d6,d7,[x0,#8*6]
++	ldp	d8,d9,[x0,#8*8]
++	ldp	d10,d11,[x0,#8*10]
++	ldp	d12,d13,[x0,#8*12]
++	ldp	d14,d15,[x0,#8*14]
++	ldp	d16,d17,[x0,#8*16]
++	ldp	d18,d19,[x0,#8*18]
++	ldp	d20,d21,[x0,#8*20]
++	ldp	d22,d23,[x0,#8*22]
++	ldr	d24,[x0,#8*24]
++	bl	KeccakF1600_ce
++	ldr	x30,[sp,#8]
++	stp	d0,d1,[x0,#8*0]
++	stp	d2,d3,[x0,#8*2]
++	stp	d4,d5,[x0,#8*4]
++	stp	d6,d7,[x0,#8*6]
++	stp	d8,d9,[x0,#8*8]
++	stp	d10,d11,[x0,#8*10]
++	stp	d12,d13,[x0,#8*12]
++	stp	d14,d15,[x0,#8*14]
++	stp	d16,d17,[x0,#8*16]
++	stp	d18,d19,[x0,#8*18]
++	stp	d20,d21,[x0,#8*20]
++	stp	d22,d23,[x0,#8*22]
++	str	d24,[x0,#8*24]
++
++	ldp	d8,d9,[sp,#16]
++	ldp	d10,d11,[sp,#32]
++	ldp	d12,d13,[sp,#48]
++	ldp	d14,d15,[sp,#64]
++	ldr	x29,[sp],#80
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	KeccakF1600_cext,.-KeccakF1600_cext
++.globl	SHA3_absorb_cext
++.type	SHA3_absorb_cext,%function
++.align	5
++SHA3_absorb_cext:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-80]!
++	add	x29,sp,#0
++	stp	d8,d9,[sp,#16]		// per ABI requirement
++	stp	d10,d11,[sp,#32]
++	stp	d12,d13,[sp,#48]
++	stp	d14,d15,[sp,#64]
++	ldp	d0,d1,[x0,#8*0]
++	ldp	d2,d3,[x0,#8*2]
++	ldp	d4,d5,[x0,#8*4]
++	ldp	d6,d7,[x0,#8*6]
++	ldp	d8,d9,[x0,#8*8]
++	ldp	d10,d11,[x0,#8*10]
++	ldp	d12,d13,[x0,#8*12]
++	ldp	d14,d15,[x0,#8*14]
++	ldp	d16,d17,[x0,#8*16]
++	ldp	d18,d19,[x0,#8*18]
++	ldp	d20,d21,[x0,#8*20]
++	ldp	d22,d23,[x0,#8*22]
++	ldr	d24,[x0,#8*24]
++	b	.Loop_absorb_ce
++
++.align	4
++.Loop_absorb_ce:
++	subs	x2,x2,x3		// len - bsz
++	blo	.Labsorbed_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v0.16b,v0.16b,v31.16b
++	cmp	x3,#8*(0+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v1.16b,v1.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v2.16b,v2.16b,v31.16b
++	cmp	x3,#8*(2+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v3.16b,v3.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v4.16b,v4.16b,v31.16b
++	cmp	x3,#8*(4+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v5.16b,v5.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v6.16b,v6.16b,v31.16b
++	cmp	x3,#8*(6+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v7.16b,v7.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v8.16b,v8.16b,v31.16b
++	cmp	x3,#8*(8+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v9.16b,v9.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v10.16b,v10.16b,v31.16b
++	cmp	x3,#8*(10+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v11.16b,v11.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v12.16b,v12.16b,v31.16b
++	cmp	x3,#8*(12+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v13.16b,v13.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v14.16b,v14.16b,v31.16b
++	cmp	x3,#8*(14+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v15.16b,v15.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v16.16b,v16.16b,v31.16b
++	cmp	x3,#8*(16+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v17.16b,v17.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v18.16b,v18.16b,v31.16b
++	cmp	x3,#8*(18+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v19.16b,v19.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v20.16b,v20.16b,v31.16b
++	cmp	x3,#8*(20+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v21.16b,v21.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v22.16b,v22.16b,v31.16b
++	cmp	x3,#8*(22+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v23.16b,v23.16b,v31.16b
++	beq	.Lprocess_block_ce
++	ldr	d31,[x1],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	v24.16b,v24.16b,v31.16b
++
++.Lprocess_block_ce:
++
++	bl	KeccakF1600_ce
++
++	b	.Loop_absorb_ce
++
++.align	4
++.Labsorbed_ce:
++	stp	d0,d1,[x0,#8*0]
++	stp	d2,d3,[x0,#8*2]
++	stp	d4,d5,[x0,#8*4]
++	stp	d6,d7,[x0,#8*6]
++	stp	d8,d9,[x0,#8*8]
++	stp	d10,d11,[x0,#8*10]
++	stp	d12,d13,[x0,#8*12]
++	stp	d14,d15,[x0,#8*14]
++	stp	d16,d17,[x0,#8*16]
++	stp	d18,d19,[x0,#8*18]
++	stp	d20,d21,[x0,#8*20]
++	stp	d22,d23,[x0,#8*22]
++	str	d24,[x0,#8*24]
++	add	x0,x2,x3		// return value
++
++	ldp	d8,d9,[sp,#16]
++	ldp	d10,d11,[sp,#32]
++	ldp	d12,d13,[sp,#48]
++	ldp	d14,d15,[sp,#64]
++	ldp	x29,x30,[sp],#80
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_absorb_cext,.-SHA3_absorb_cext
++.globl	SHA3_squeeze_cext
++.type	SHA3_squeeze_cext,%function
++.align	5
++SHA3_squeeze_cext:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-16]!
++	add	x29,sp,#0
++	mov	x9,x0
++	mov	x10,x3
++
++.Loop_squeeze_ce:
++	ldr	x4,[x9],#8
++	cmp	x2,#8
++	blo	.Lsqueeze_tail_ce
++#ifdef	__AARCH64EB__
++	rev	x4,x4
++#endif
++	str	x4,[x1],#8
++	beq	.Lsqueeze_done_ce
++
++	sub	x2,x2,#8
++	subs	x10,x10,#8
++	bhi	.Loop_squeeze_ce
++
++	bl	KeccakF1600_cext
++	ldr	x30,[sp,#8]
++	mov	x9,x0
++	mov	x10,x3
++	b	.Loop_squeeze_ce
++
++.align	4
++.Lsqueeze_tail_ce:
++	strb	w4,[x1],#1
++	lsr	x4,x4,#8
++	subs	x2,x2,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[x1],#1
++	lsr	x4,x4,#8
++	subs	x2,x2,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[x1],#1
++	lsr	x4,x4,#8
++	subs	x2,x2,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[x1],#1
++	lsr	x4,x4,#8
++	subs	x2,x2,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[x1],#1
++	lsr	x4,x4,#8
++	subs	x2,x2,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[x1],#1
++	lsr	x4,x4,#8
++	subs	x2,x2,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[x1],#1
++
++.Lsqueeze_done_ce:
++	ldr	x29,[sp],#16
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_squeeze_cext,.-SHA3_squeeze_cext
++.byte	75,101,99,99,97,107,45,49,54,48,48,32,97,98,115,111,114,98,32,97,110,100,32,115,113,117,101,101,122,101,32,102,111,114,32,65,82,77,118,56,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,104,116,116,112,115,58,47,47,103,105,116,104,117,98,46,99,111,109,47,100,111,116,45,97,115,109,62,0
++.align	2
+--- /dev/null
++++ third_party/openssl/crypto/sha/asm/keccak1600-armv8.pl
+@@ -0,0 +1,884 @@
++#!/usr/bin/env perl
++# Copyright 2017-2025 The OpenSSL Project Authors. All Rights Reserved.
++#
++# Licensed under the Apache License 2.0 (the "License").  You may not use
++# this file except in compliance with the License.  You can obtain a copy
++# in the file LICENSE in the source distribution or at
++# https://www.openssl.org/source/license.html
++#
++# ====================================================================
++# Written by Andy Polyakov, @dot-asm, initially for use in the OpenSSL
++# project. The module is, however, dual licensed under OpenSSL and
++# CRYPTOGAMS licenses depending on where you obtain it. For further
++# details see https://github.com/dot-asm/cryptogams/.
++# ====================================================================
++#
++# Keccak-1600 for ARMv8.
++#
++# June 2017.
++#
++# This is straightforward KECCAK_1X_ALT implementation. It makes no
++# sense to attempt SIMD/NEON implementation for following reason.
++# 64-bit lanes of vector registers can't be addressed as easily as in
++# 32-bit mode. This means that 64-bit NEON is bound to be slower than
++# 32-bit NEON, and this implementation is faster than 32-bit NEON on
++# same processor. Even though it takes more scalar xor's and andn's,
++# it gets compensated by availability of rotate. Not to forget that
++# most processors achieve higher issue rate with scalar instructions.
++#
++# February 2018.
++#
++# Add hardware-assisted ARMv8.2 implementation. It's KECCAK_1X_ALT
++# variant with register permutation/rotation twist that allows to
++# eliminate copies to temporary registers. If you look closely you'll
++# notice that it uses only one lane of vector registers. The new
++# instructions effectively facilitate parallel hashing, which we don't
++# support [yet?]. But lowest-level core procedure is prepared for it.
++# The inner round is 67 [vector] instructions, so it's not actually
++# obvious that it will provide performance improvement [in serial
++# hash] as long as vector instructions issue rate is limited to 1 per
++# cycle...
++#
++######################################################################
++# Numbers are cycles per processed byte.
++#
++#		r=1088(*)
++#
++# Cortex-A53	13
++# Cortex-A57	12
++# X-Gene	14
++# Mongoose	10
++# Kryo		12
++# Denver	7.8
++# Apple A7	7.2
++# ThunderX2	9.7
++#
++# (*)	Corresponds to SHA3-256. No improvement coefficients are listed
++#	because they vary too much from compiler to compiler. Newer
++#	compiler does much better and improvement varies from 5% on
++#	Cortex-A57 to 25% on Cortex-A53. While in comparison to older
++#	compiler this code is at least 2x faster...
++
++# $output is the last argument if it looks like a file (it has an extension)
++# $flavour is the first argument if it doesn't look like a file
++$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
++$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
++
++$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
++( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
++( $xlate="${dir}../../perlasm/arm-xlate.pl" and -f $xlate) or
++die "can't locate arm-xlate.pl";
++
++open OUT,"| \"$^X\" $xlate $flavour \"$output\""
++    or die "can't call $xlate: $!";
++*STDOUT=*OUT;
++
++my @rhotates = ([  0,  1, 62, 28, 27 ],
++                [ 36, 44,  6, 55, 20 ],
++                [  3, 10, 43, 25, 39 ],
++                [ 41, 45, 15, 21,  8 ],
++                [ 18,  2, 61, 56, 14 ]);
++
++$code.=<<___;
++#include "arm_arch.h"
++
++.rodata
++
++.align 8	// strategic alignment and padding that allows to use
++		// address value as loop termination condition...
++	.quad	0,0,0,0,0,0,0,0
++.type	iotas,%object
++iotas:
++	.quad	0x0000000000000001
++	.quad	0x0000000000008082
++	.quad	0x800000000000808a
++	.quad	0x8000000080008000
++	.quad	0x000000000000808b
++	.quad	0x0000000080000001
++	.quad	0x8000000080008081
++	.quad	0x8000000000008009
++	.quad	0x000000000000008a
++	.quad	0x0000000000000088
++	.quad	0x0000000080008009
++	.quad	0x000000008000000a
++	.quad	0x000000008000808b
++	.quad	0x800000000000008b
++	.quad	0x8000000000008089
++	.quad	0x8000000000008003
++	.quad	0x8000000000008002
++	.quad	0x8000000000000080
++	.quad	0x000000000000800a
++	.quad	0x800000008000000a
++	.quad	0x8000000080008081
++	.quad	0x8000000000008080
++	.quad	0x0000000080000001
++	.quad	0x8000000080008008
++.size	iotas,.-iotas
++___
++								{{{
++my @A = map([ "x$_", "x".($_+1), "x".($_+2), "x".($_+3), "x".($_+4) ],
++            (0, 5, 10, 15, 20));
++   $A[3][3] = "x25"; # x18 is reserved
++
++my @C = map("x$_", (26,27,28,30));
++
++$code.=<<___;
++.text
++
++.type	KeccakF1600_int,%function
++.align	5
++KeccakF1600_int:
++	AARCH64_SIGN_LINK_REGISTER
++	adrp	$C[2],iotas
++	add	$C[2],$C[2],:lo12:iotas
++	stp	$C[2],x30,[sp,#16]		// 32 bytes on top are mine
++	b	.Loop
++.align	4
++.Loop:
++	////////////////////////////////////////// Theta
++	eor	$C[0],$A[0][0],$A[1][0]
++	stp	$A[0][4],$A[1][4],[sp,#0]	// offload pair...
++	eor	$C[1],$A[0][1],$A[1][1]
++	eor	$C[2],$A[0][2],$A[1][2]
++	eor	$C[3],$A[0][3],$A[1][3]
++___
++	$C[4]=$A[0][4];
++	$C[5]=$A[1][4];
++$code.=<<___;
++	eor	$C[4],$A[0][4],$A[1][4]
++	eor	$C[0],$C[0],$A[2][0]
++	eor	$C[1],$C[1],$A[2][1]
++	eor	$C[2],$C[2],$A[2][2]
++	eor	$C[3],$C[3],$A[2][3]
++	eor	$C[4],$C[4],$A[2][4]
++	eor	$C[0],$C[0],$A[3][0]
++	eor	$C[1],$C[1],$A[3][1]
++	eor	$C[2],$C[2],$A[3][2]
++	eor	$C[3],$C[3],$A[3][3]
++	eor	$C[4],$C[4],$A[3][4]
++	eor	$C[0],$C[0],$A[4][0]
++	eor	$C[2],$C[2],$A[4][2]
++	eor	$C[1],$C[1],$A[4][1]
++	eor	$C[3],$C[3],$A[4][3]
++	eor	$C[4],$C[4],$A[4][4]
++
++	eor	$C[5],$C[0],$C[2],ror#63
++
++	eor	$A[0][1],$A[0][1],$C[5]
++	eor	$A[1][1],$A[1][1],$C[5]
++	eor	$A[2][1],$A[2][1],$C[5]
++	eor	$A[3][1],$A[3][1],$C[5]
++	eor	$A[4][1],$A[4][1],$C[5]
++
++	eor	$C[5],$C[1],$C[3],ror#63
++	eor	$C[2],$C[2],$C[4],ror#63
++	eor	$C[3],$C[3],$C[0],ror#63
++	eor	$C[4],$C[4],$C[1],ror#63
++
++	eor	$C[1],   $A[0][2],$C[5]		// mov	$C[1],$A[0][2]
++	eor	$A[1][2],$A[1][2],$C[5]
++	eor	$A[2][2],$A[2][2],$C[5]
++	eor	$A[3][2],$A[3][2],$C[5]
++	eor	$A[4][2],$A[4][2],$C[5]
++
++	eor	$A[0][0],$A[0][0],$C[4]
++	eor	$A[1][0],$A[1][0],$C[4]
++	eor	$A[2][0],$A[2][0],$C[4]
++	eor	$A[3][0],$A[3][0],$C[4]
++	eor	$A[4][0],$A[4][0],$C[4]
++___
++	$C[4]=undef;
++	$C[5]=undef;
++$code.=<<___;
++	ldp	$A[0][4],$A[1][4],[sp,#0]	// re-load offloaded data
++	eor	$C[0],   $A[0][3],$C[2]		// mov	$C[0],$A[0][3]
++	eor	$A[1][3],$A[1][3],$C[2]
++	eor	$A[2][3],$A[2][3],$C[2]
++	eor	$A[3][3],$A[3][3],$C[2]
++	eor	$A[4][3],$A[4][3],$C[2]
++
++	eor	$C[2],   $A[0][4],$C[3]		// mov	$C[2],$A[0][4]
++	eor	$A[1][4],$A[1][4],$C[3]
++	eor	$A[2][4],$A[2][4],$C[3]
++	eor	$A[3][4],$A[3][4],$C[3]
++	eor	$A[4][4],$A[4][4],$C[3]
++
++	////////////////////////////////////////// Rho+Pi
++	mov	$C[3],$A[0][1]
++	ror	$A[0][1],$A[1][1],#64-$rhotates[1][1]
++	//mov	$C[1],$A[0][2]
++	ror	$A[0][2],$A[2][2],#64-$rhotates[2][2]
++	//mov	$C[0],$A[0][3]
++	ror	$A[0][3],$A[3][3],#64-$rhotates[3][3]
++	//mov	$C[2],$A[0][4]
++	ror	$A[0][4],$A[4][4],#64-$rhotates[4][4]
++
++	ror	$A[1][1],$A[1][4],#64-$rhotates[1][4]
++	ror	$A[2][2],$A[2][3],#64-$rhotates[2][3]
++	ror	$A[3][3],$A[3][2],#64-$rhotates[3][2]
++	ror	$A[4][4],$A[4][1],#64-$rhotates[4][1]
++
++	ror	$A[1][4],$A[4][2],#64-$rhotates[4][2]
++	ror	$A[2][3],$A[3][4],#64-$rhotates[3][4]
++	ror	$A[3][2],$A[2][1],#64-$rhotates[2][1]
++	ror	$A[4][1],$A[1][3],#64-$rhotates[1][3]
++
++	ror	$A[4][2],$A[2][4],#64-$rhotates[2][4]
++	ror	$A[3][4],$A[4][3],#64-$rhotates[4][3]
++	ror	$A[2][1],$A[1][2],#64-$rhotates[1][2]
++	ror	$A[1][3],$A[3][1],#64-$rhotates[3][1]
++
++	ror	$A[2][4],$A[4][0],#64-$rhotates[4][0]
++	ror	$A[4][3],$A[3][0],#64-$rhotates[3][0]
++	ror	$A[1][2],$A[2][0],#64-$rhotates[2][0]
++	ror	$A[3][1],$A[1][0],#64-$rhotates[1][0]
++
++	ror	$A[1][0],$C[0],#64-$rhotates[0][3]
++	ror	$A[2][0],$C[3],#64-$rhotates[0][1]
++	ror	$A[3][0],$C[2],#64-$rhotates[0][4]
++	ror	$A[4][0],$C[1],#64-$rhotates[0][2]
++
++	////////////////////////////////////////// Chi+Iota
++	bic	$C[0],$A[0][2],$A[0][1]
++	bic	$C[1],$A[0][3],$A[0][2]
++	bic	$C[2],$A[0][0],$A[0][4]
++	bic	$C[3],$A[0][1],$A[0][0]
++	eor	$A[0][0],$A[0][0],$C[0]
++	bic	$C[0],$A[0][4],$A[0][3]
++	eor	$A[0][1],$A[0][1],$C[1]
++	 ldr	$C[1],[sp,#16]
++	eor	$A[0][3],$A[0][3],$C[2]
++	eor	$A[0][4],$A[0][4],$C[3]
++	eor	$A[0][2],$A[0][2],$C[0]
++	 ldr	$C[3],[$C[1]],#8		// Iota[i++]
++
++	bic	$C[0],$A[1][2],$A[1][1]
++	 tst	$C[1],#255			// are we done?
++	 str	$C[1],[sp,#16]
++	bic	$C[1],$A[1][3],$A[1][2]
++	bic	$C[2],$A[1][0],$A[1][4]
++	 eor	$A[0][0],$A[0][0],$C[3]		// A[0][0] ^= Iota
++	bic	$C[3],$A[1][1],$A[1][0]
++	eor	$A[1][0],$A[1][0],$C[0]
++	bic	$C[0],$A[1][4],$A[1][3]
++	eor	$A[1][1],$A[1][1],$C[1]
++	eor	$A[1][3],$A[1][3],$C[2]
++	eor	$A[1][4],$A[1][4],$C[3]
++	eor	$A[1][2],$A[1][2],$C[0]
++
++	bic	$C[0],$A[2][2],$A[2][1]
++	bic	$C[1],$A[2][3],$A[2][2]
++	bic	$C[2],$A[2][0],$A[2][4]
++	bic	$C[3],$A[2][1],$A[2][0]
++	eor	$A[2][0],$A[2][0],$C[0]
++	bic	$C[0],$A[2][4],$A[2][3]
++	eor	$A[2][1],$A[2][1],$C[1]
++	eor	$A[2][3],$A[2][3],$C[2]
++	eor	$A[2][4],$A[2][4],$C[3]
++	eor	$A[2][2],$A[2][2],$C[0]
++
++	bic	$C[0],$A[3][2],$A[3][1]
++	bic	$C[1],$A[3][3],$A[3][2]
++	bic	$C[2],$A[3][0],$A[3][4]
++	bic	$C[3],$A[3][1],$A[3][0]
++	eor	$A[3][0],$A[3][0],$C[0]
++	bic	$C[0],$A[3][4],$A[3][3]
++	eor	$A[3][1],$A[3][1],$C[1]
++	eor	$A[3][3],$A[3][3],$C[2]
++	eor	$A[3][4],$A[3][4],$C[3]
++	eor	$A[3][2],$A[3][2],$C[0]
++
++	bic	$C[0],$A[4][2],$A[4][1]
++	bic	$C[1],$A[4][3],$A[4][2]
++	bic	$C[2],$A[4][0],$A[4][4]
++	bic	$C[3],$A[4][1],$A[4][0]
++	eor	$A[4][0],$A[4][0],$C[0]
++	bic	$C[0],$A[4][4],$A[4][3]
++	eor	$A[4][1],$A[4][1],$C[1]
++	eor	$A[4][3],$A[4][3],$C[2]
++	eor	$A[4][4],$A[4][4],$C[3]
++	eor	$A[4][2],$A[4][2],$C[0]
++
++	bne	.Loop
++
++	ldr	x30,[sp,#24]
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	KeccakF1600_int,.-KeccakF1600_int
++
++.type	KeccakF1600,%function
++.align	5
++KeccakF1600:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-128]!
++	add	x29,sp,#0
++	stp	x19,x20,[sp,#16]
++	stp	x21,x22,[sp,#32]
++	stp	x23,x24,[sp,#48]
++	stp	x25,x26,[sp,#64]
++	stp	x27,x28,[sp,#80]
++	sub	sp,sp,#48
++
++	str	x0,[sp,#32]			// offload argument
++	mov	$C[0],x0
++	ldp	$A[0][0],$A[0][1],[x0,#16*0]
++	ldp	$A[0][2],$A[0][3],[$C[0],#16*1]
++	ldp	$A[0][4],$A[1][0],[$C[0],#16*2]
++	ldp	$A[1][1],$A[1][2],[$C[0],#16*3]
++	ldp	$A[1][3],$A[1][4],[$C[0],#16*4]
++	ldp	$A[2][0],$A[2][1],[$C[0],#16*5]
++	ldp	$A[2][2],$A[2][3],[$C[0],#16*6]
++	ldp	$A[2][4],$A[3][0],[$C[0],#16*7]
++	ldp	$A[3][1],$A[3][2],[$C[0],#16*8]
++	ldp	$A[3][3],$A[3][4],[$C[0],#16*9]
++	ldp	$A[4][0],$A[4][1],[$C[0],#16*10]
++	ldp	$A[4][2],$A[4][3],[$C[0],#16*11]
++	ldr	$A[4][4],[$C[0],#16*12]
++
++	bl	KeccakF1600_int
++
++	ldr	$C[0],[sp,#32]
++	stp	$A[0][0],$A[0][1],[$C[0],#16*0]
++	stp	$A[0][2],$A[0][3],[$C[0],#16*1]
++	stp	$A[0][4],$A[1][0],[$C[0],#16*2]
++	stp	$A[1][1],$A[1][2],[$C[0],#16*3]
++	stp	$A[1][3],$A[1][4],[$C[0],#16*4]
++	stp	$A[2][0],$A[2][1],[$C[0],#16*5]
++	stp	$A[2][2],$A[2][3],[$C[0],#16*6]
++	stp	$A[2][4],$A[3][0],[$C[0],#16*7]
++	stp	$A[3][1],$A[3][2],[$C[0],#16*8]
++	stp	$A[3][3],$A[3][4],[$C[0],#16*9]
++	stp	$A[4][0],$A[4][1],[$C[0],#16*10]
++	stp	$A[4][2],$A[4][3],[$C[0],#16*11]
++	str	$A[4][4],[$C[0],#16*12]
++
++	ldp	x19,x20,[x29,#16]
++	add	sp,sp,#48
++	ldp	x21,x22,[x29,#32]
++	ldp	x23,x24,[x29,#48]
++	ldp	x25,x26,[x29,#64]
++	ldp	x27,x28,[x29,#80]
++	ldp	x29,x30,[sp],#128
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	KeccakF1600,.-KeccakF1600
++
++.globl	SHA3_absorb
++.type	SHA3_absorb,%function
++.align	5
++SHA3_absorb:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-128]!
++	add	x29,sp,#0
++	stp	x19,x20,[sp,#16]
++	stp	x21,x22,[sp,#32]
++	stp	x23,x24,[sp,#48]
++	stp	x25,x26,[sp,#64]
++	stp	x27,x28,[sp,#80]
++	sub	sp,sp,#64
++
++	stp	x0,x1,[sp,#32]			// offload arguments
++	stp	x2,x3,[sp,#48]
++
++	mov	$C[0],x0			// uint64_t A[5][5]
++	mov	$C[1],x1			// const void *inp
++	mov	$C[2],x2			// size_t len
++	mov	$C[3],x3			// size_t bsz
++	ldp	$A[0][0],$A[0][1],[$C[0],#16*0]
++	ldp	$A[0][2],$A[0][3],[$C[0],#16*1]
++	ldp	$A[0][4],$A[1][0],[$C[0],#16*2]
++	ldp	$A[1][1],$A[1][2],[$C[0],#16*3]
++	ldp	$A[1][3],$A[1][4],[$C[0],#16*4]
++	ldp	$A[2][0],$A[2][1],[$C[0],#16*5]
++	ldp	$A[2][2],$A[2][3],[$C[0],#16*6]
++	ldp	$A[2][4],$A[3][0],[$C[0],#16*7]
++	ldp	$A[3][1],$A[3][2],[$C[0],#16*8]
++	ldp	$A[3][3],$A[3][4],[$C[0],#16*9]
++	ldp	$A[4][0],$A[4][1],[$C[0],#16*10]
++	ldp	$A[4][2],$A[4][3],[$C[0],#16*11]
++	ldr	$A[4][4],[$C[0],#16*12]
++	b	.Loop_absorb
++
++.align	4
++.Loop_absorb:
++	subs	$C[0],$C[2],$C[3]		// len - bsz
++	blo	.Labsorbed
++
++	str	$C[0],[sp,#48]			// save len - bsz
++___
++for (my $i=0; $i<24; $i+=2) {
++my $j = $i+1;
++$code.=<<___;
++	ldr	$C[0],[$C[1]],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	$C[0],$C[0]
++#endif
++	eor	$A[$i/5][$i%5],$A[$i/5][$i%5],$C[0]
++	cmp	$C[3],#8*($i+2)
++	blo	.Lprocess_block
++	ldr	$C[0],[$C[1]],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	$C[0],$C[0]
++#endif
++	eor	$A[$j/5][$j%5],$A[$j/5][$j%5],$C[0]
++	beq	.Lprocess_block
++___
++}
++$code.=<<___;
++	ldr	$C[0],[$C[1]],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev	$C[0],$C[0]
++#endif
++	eor	$A[4][4],$A[4][4],$C[0]
++
++.Lprocess_block:
++	str	$C[1],[sp,#40]			// save inp
++
++	bl	KeccakF1600_int
++
++	ldr	$C[1],[sp,#40]			// restore arguments
++	ldp	$C[2],$C[3],[sp,#48]
++	b	.Loop_absorb
++
++.align	4
++.Labsorbed:
++	ldr	$C[1],[sp,#32]
++	stp	$A[0][0],$A[0][1],[$C[1],#16*0]
++	stp	$A[0][2],$A[0][3],[$C[1],#16*1]
++	stp	$A[0][4],$A[1][0],[$C[1],#16*2]
++	stp	$A[1][1],$A[1][2],[$C[1],#16*3]
++	stp	$A[1][3],$A[1][4],[$C[1],#16*4]
++	stp	$A[2][0],$A[2][1],[$C[1],#16*5]
++	stp	$A[2][2],$A[2][3],[$C[1],#16*6]
++	stp	$A[2][4],$A[3][0],[$C[1],#16*7]
++	stp	$A[3][1],$A[3][2],[$C[1],#16*8]
++	stp	$A[3][3],$A[3][4],[$C[1],#16*9]
++	stp	$A[4][0],$A[4][1],[$C[1],#16*10]
++	stp	$A[4][2],$A[4][3],[$C[1],#16*11]
++	str	$A[4][4],[$C[1],#16*12]
++
++	mov	x0,$C[2]			// return value
++	ldp	x19,x20,[x29,#16]
++	add	sp,sp,#64
++	ldp	x21,x22,[x29,#32]
++	ldp	x23,x24,[x29,#48]
++	ldp	x25,x26,[x29,#64]
++	ldp	x27,x28,[x29,#80]
++	ldp	x29,x30,[sp],#128
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_absorb,.-SHA3_absorb
++___
++{
++my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
++$code.=<<___;
++.globl	SHA3_squeeze
++.type	SHA3_squeeze,%function
++.align	5
++SHA3_squeeze:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-48]!
++	add	x29,sp,#0
++	stp	x19,x20,[sp,#16]
++	stp	x21,x22,[sp,#32]
++
++	mov	$A_flat,x0			// put aside arguments
++	mov	$out,x1
++	mov	$len,x2
++	mov	$bsz,x3
++	cmp	w4, #0				// w4 = 'next' argument
++	bne	.Lnext_block
++
++.Loop_squeeze:
++	ldr	x4,[x0],#8
++	cmp	$len,#8
++	blo	.Lsqueeze_tail
++#ifdef	__AARCH64EB__
++	rev	x4,x4
++#endif
++	str	x4,[$out],#8
++	subs	$len,$len,#8
++	beq	.Lsqueeze_done
++
++	subs	x3,x3,#8
++	bhi	.Loop_squeeze
++.Lnext_block:
++	mov	x0,$A_flat
++	bl	KeccakF1600
++	mov	x0,$A_flat
++	mov	x3,$bsz
++	b	.Loop_squeeze
++
++.align	4
++.Lsqueeze_tail:
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done
++	strb	w4,[$out],#1
++
++.Lsqueeze_done:
++	ldp	x19,x20,[sp,#16]
++	ldp	x21,x22,[sp,#32]
++	ldp	x29,x30,[sp],#48
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_squeeze,.-SHA3_squeeze
++___
++}								}}}
++								{{{
++my @A = map([ "v".$_.".16b", "v".($_+1).".16b", "v".($_+2).".16b",
++                             "v".($_+3).".16b", "v".($_+4).".16b" ],
++            (0, 5, 10, 15, 20));
++
++my @C = map("v$_.16b", (25..31));
++my @D = @C[4,5,6,2,3];
++
++$code.=<<___;
++.type	KeccakF1600_ce,%function
++.align	5
++KeccakF1600_ce:
++	mov	x9,#24
++	adrp	x10,iotas
++	add	x10,x10,:lo12:iotas
++	b	.Loop_ce
++.align	4
++.Loop_ce:
++	////////////////////////////////////////////////// Theta
++	eor3	$C[0],$A[4][0],$A[3][0],$A[2][0]
++	eor3	$C[1],$A[4][1],$A[3][1],$A[2][1]
++	eor3	$C[2],$A[4][2],$A[3][2],$A[2][2]
++	eor3	$C[3],$A[4][3],$A[3][3],$A[2][3]
++	eor3	$C[4],$A[4][4],$A[3][4],$A[2][4]
++	eor3	$C[0],$C[0],   $A[1][0],$A[0][0]
++	eor3	$C[1],$C[1],   $A[1][1],$A[0][1]
++	eor3	$C[2],$C[2],   $A[1][2],$A[0][2]
++	eor3	$C[3],$C[3],   $A[1][3],$A[0][3]
++	eor3	$C[4],$C[4],   $A[1][4],$A[0][4]
++
++	rax1	$C[5],$C[0],$C[2]			// D[1]
++	rax1	$C[6],$C[1],$C[3]			// D[2]
++	rax1	$C[2],$C[2],$C[4]			// D[3]
++	rax1	$C[3],$C[3],$C[0]			// D[4]
++	rax1	$C[4],$C[4],$C[1]			// D[0]
++
++	////////////////////////////////////////////////// Theta+Rho+Pi
++	xar	$C[0],   $A[0][1],$D[1],#64-$rhotates[0][1] // C[0]=A[2][0]
++
++	xar	$A[0][1],$A[1][1],$D[1],#64-$rhotates[1][1]
++	xar	$A[1][1],$A[1][4],$D[4],#64-$rhotates[1][4]
++	xar	$A[1][4],$A[4][2],$D[2],#64-$rhotates[4][2]
++	xar	$A[4][2],$A[2][4],$D[4],#64-$rhotates[2][4]
++	xar	$A[2][4],$A[4][0],$D[0],#64-$rhotates[4][0]
++
++	xar	$C[1],   $A[0][2],$D[2],#64-$rhotates[0][2] // C[1]=A[4][0]
++
++	xar	$A[0][2],$A[2][2],$D[2],#64-$rhotates[2][2]
++	xar	$A[2][2],$A[2][3],$D[3],#64-$rhotates[2][3]
++	xar	$A[2][3],$A[3][4],$D[4],#64-$rhotates[3][4]
++	xar	$A[3][4],$A[4][3],$D[3],#64-$rhotates[4][3]
++	xar	$A[4][3],$A[3][0],$D[0],#64-$rhotates[3][0]
++
++	xar	$A[3][0],$A[0][4],$D[4],#64-$rhotates[0][4]
++
++	xar	$D[4],   $A[4][4],$D[4],#64-$rhotates[4][4] // D[4]=A[0][4]
++	xar	$A[4][4],$A[4][1],$D[1],#64-$rhotates[4][1]
++	xar	$A[1][3],$A[1][3],$D[3],#64-$rhotates[1][3] // A[1][3]=A[4][1]
++	xar	$A[0][4],$A[3][1],$D[1],#64-$rhotates[3][1] // A[0][4]=A[1][3]
++	xar	$A[3][1],$A[1][0],$D[0],#64-$rhotates[1][0]
++
++	xar	$A[1][0],$A[0][3],$D[3],#64-$rhotates[0][3]
++
++	eor	$A[0][0],$A[0][0],$D[0]
++
++	xar	$D[3],   $A[3][3],$D[3],#64-$rhotates[3][3] // D[3]=A[0][3]
++	xar	$A[0][3],$A[3][2],$D[2],#64-$rhotates[3][2] // A[0][3]=A[3][3]
++	xar	$D[1],   $A[2][1],$D[1],#64-$rhotates[2][1] // D[1]=A[3][2]
++	xar	$D[2],   $A[1][2],$D[2],#64-$rhotates[1][2] // D[2]=A[2][1]
++	xar	$D[0],   $A[2][0],$D[0],#64-$rhotates[2][0] // D[0]=A[1][2]
++
++	////////////////////////////////////////////////// Chi+Iota
++	bcax	$A[4][0],$C[1],   $A[4][2],$A[1][3]	// A[1][3]=A[4][1]
++	bcax	$A[4][1],$A[1][3],$A[4][3],$A[4][2]	// A[1][3]=A[4][1]
++	bcax	$A[4][2],$A[4][2],$A[4][4],$A[4][3]
++	bcax	$A[4][3],$A[4][3],$C[1],   $A[4][4]
++	bcax	$A[4][4],$A[4][4],$A[1][3],$C[1]	// A[1][3]=A[4][1]
++
++	ld1r	{$C[1]},[x10],#8
++
++	bcax	$A[3][2],$D[1],   $A[3][4],$A[0][3]	// A[0][3]=A[3][3]
++	bcax	$A[3][3],$A[0][3],$A[3][0],$A[3][4]	// A[0][3]=A[3][3]
++	bcax	$A[3][4],$A[3][4],$A[3][1],$A[3][0]
++	bcax	$A[3][0],$A[3][0],$D[1],   $A[3][1]
++	bcax	$A[3][1],$A[3][1],$A[0][3],$D[1]	// A[0][3]=A[3][3]
++
++	bcax	$A[2][0],$C[0],   $A[2][2],$D[2]
++	bcax	$A[2][1],$D[2],   $A[2][3],$A[2][2]
++	bcax	$A[2][2],$A[2][2],$A[2][4],$A[2][3]
++	bcax	$A[2][3],$A[2][3],$C[0],   $A[2][4]
++	bcax	$A[2][4],$A[2][4],$D[2],   $C[0]
++
++	bcax	$A[1][2],$D[0],   $A[1][4],$A[0][4]	// A[0][4]=A[1][3]
++	bcax	$A[1][3],$A[0][4],$A[1][0],$A[1][4]	// A[0][4]=A[1][3]
++	bcax	$A[1][4],$A[1][4],$A[1][1],$A[1][0]
++	bcax	$A[1][0],$A[1][0],$D[0],   $A[1][1]
++	bcax	$A[1][1],$A[1][1],$A[0][4],$D[0]	// A[0][4]=A[1][3]
++
++	bcax	$A[0][3],$D[3],   $A[0][0],$D[4]
++	bcax	$A[0][4],$D[4],   $A[0][1],$A[0][0]
++	bcax	$A[0][0],$A[0][0],$A[0][2],$A[0][1]
++	bcax	$A[0][1],$A[0][1],$D[3],   $A[0][2]
++	bcax	$A[0][2],$A[0][2],$D[4],   $D[3]
++
++	eor	$A[0][0],$A[0][0],$C[1]
++
++	subs	x9,x9,#1
++	bne	.Loop_ce
++
++	ret
++.size	KeccakF1600_ce,.-KeccakF1600_ce
++
++.type	KeccakF1600_cext,%function
++.align	5
++KeccakF1600_cext:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-80]!
++	add	x29,sp,#0
++	stp	d8,d9,[sp,#16]		// per ABI requirement
++	stp	d10,d11,[sp,#32]
++	stp	d12,d13,[sp,#48]
++	stp	d14,d15,[sp,#64]
++___
++for($i=0; $i<24; $i+=2) {		# load A[5][5]
++my $j=$i+1;
++$code.=<<___;
++	ldp	d$i,d$j,[x0,#8*$i]
++___
++}
++$code.=<<___;
++	ldr	d24,[x0,#8*$i]
++	bl	KeccakF1600_ce
++	ldr	x30,[sp,#8]
++___
++for($i=0; $i<24; $i+=2) {		# store A[5][5]
++my $j=$i+1;
++$code.=<<___;
++	stp	d$i,d$j,[x0,#8*$i]
++___
++}
++$code.=<<___;
++	str	d24,[x0,#8*$i]
++
++	ldp	d8,d9,[sp,#16]
++	ldp	d10,d11,[sp,#32]
++	ldp	d12,d13,[sp,#48]
++	ldp	d14,d15,[sp,#64]
++	ldr	x29,[sp],#80
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	KeccakF1600_cext,.-KeccakF1600_cext
++___
++
++{
++my ($ctx,$inp,$len,$bsz) = map("x$_",(0..3));
++
++$code.=<<___;
++.globl	SHA3_absorb_cext
++.type	SHA3_absorb_cext,%function
++.align	5
++SHA3_absorb_cext:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-80]!
++	add	x29,sp,#0
++	stp	d8,d9,[sp,#16]		// per ABI requirement
++	stp	d10,d11,[sp,#32]
++	stp	d12,d13,[sp,#48]
++	stp	d14,d15,[sp,#64]
++___
++for($i=0; $i<24; $i+=2) {		# load A[5][5]
++my $j=$i+1;
++$code.=<<___;
++	ldp	d$i,d$j,[x0,#8*$i]
++___
++}
++$code.=<<___;
++	ldr	d24,[x0,#8*$i]
++	b	.Loop_absorb_ce
++
++.align	4
++.Loop_absorb_ce:
++	subs	$len,$len,$bsz		// len - bsz
++	blo	.Labsorbed_ce
++___
++for (my $i=0; $i<24; $i+=2) {
++my $j = $i+1;
++$code.=<<___;
++	ldr	d31,[$inp],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	$A[$i/5][$i%5],$A[$i/5][$i%5],v31.16b
++	cmp	$bsz,#8*($i+2)
++	blo	.Lprocess_block_ce
++	ldr	d31,[$inp],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	$A[$j/5][$j%5],$A[$j/5][$j%5],v31.16b
++	beq	.Lprocess_block_ce
++___
++}
++$code.=<<___;
++	ldr	d31,[$inp],#8		// *inp++
++#ifdef	__AARCH64EB__
++	rev64	v31.16b,v31.16b
++#endif
++	eor	$A[4][4],$A[4][4],v31.16b
++
++.Lprocess_block_ce:
++
++	bl	KeccakF1600_ce
++
++	b	.Loop_absorb_ce
++
++.align	4
++.Labsorbed_ce:
++___
++for($i=0; $i<24; $i+=2) {		# store A[5][5]
++my $j=$i+1;
++$code.=<<___;
++	stp	d$i,d$j,[x0,#8*$i]
++___
++}
++$code.=<<___;
++	str	d24,[x0,#8*$i]
++	add	x0,$len,$bsz		// return value
++
++	ldp	d8,d9,[sp,#16]
++	ldp	d10,d11,[sp,#32]
++	ldp	d12,d13,[sp,#48]
++	ldp	d14,d15,[sp,#64]
++	ldp	x29,x30,[sp],#80
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_absorb_cext,.-SHA3_absorb_cext
++___
++}
++{
++my ($ctx,$out,$len,$bsz) = map("x$_",(0..3));
++$code.=<<___;
++.globl	SHA3_squeeze_cext
++.type	SHA3_squeeze_cext,%function
++.align	5
++SHA3_squeeze_cext:
++	AARCH64_SIGN_LINK_REGISTER
++	stp	x29,x30,[sp,#-16]!
++	add	x29,sp,#0
++	mov	x9,$ctx
++	mov	x10,$bsz
++
++.Loop_squeeze_ce:
++	ldr	x4,[x9],#8
++	cmp	$len,#8
++	blo	.Lsqueeze_tail_ce
++#ifdef	__AARCH64EB__
++	rev	x4,x4
++#endif
++	str	x4,[$out],#8
++	beq	.Lsqueeze_done_ce
++
++	sub	$len,$len,#8
++	subs	x10,x10,#8
++	bhi	.Loop_squeeze_ce
++
++	bl	KeccakF1600_cext
++	ldr	x30,[sp,#8]
++	mov	x9,$ctx
++	mov	x10,$bsz
++	b	.Loop_squeeze_ce
++
++.align	4
++.Lsqueeze_tail_ce:
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[$out],#1
++	lsr	x4,x4,#8
++	subs	$len,$len,#1
++	beq	.Lsqueeze_done_ce
++	strb	w4,[$out],#1
++
++.Lsqueeze_done_ce:
++	ldr	x29,[sp],#16
++	AARCH64_VALIDATE_LINK_REGISTER
++	ret
++.size	SHA3_squeeze_cext,.-SHA3_squeeze_cext
++___
++}								}}}
++$code.=<<___;
++.asciz	"Keccak-1600 absorb and squeeze for ARMv8, CRYPTOGAMS by <https://github.com/dot-asm>"
++___
++
++{   my  %opcode = (
++	"rax1"	=> 0xce608c00,	"eor3"	=> 0xce000000,
++	"bcax"	=> 0xce200000,	"xar"	=> 0xce800000	);
++
++    sub unsha3 {
++	my ($mnemonic,$arg)=@_;
++
++	$arg =~ m/[qv]([0-9]+)[^,]*,\s*[qv]([0-9]+)[^,]*(?:,\s*[qv]([0-9]+)[^,]*(?:,\s*[qv#]([0-9\-]+))?)?/
++	&&
++	sprintf ".inst\t0x%08x\t//%s %s",
++			$opcode{$mnemonic}|$1|($2<<5)|($3<<16)|(eval($4)<<10),
++			$mnemonic,$arg;
++    }
++}
++
++foreach(split("\n",$code)) {
++
++	s/\`([^\`]*)\`/eval($1)/ge;
++
++	m/\bld1r\b/ and s/\.16b/.2d/g	or
++	s/\b(eor3|rax1|xar|bcax)\s+(v.*)/unsha3($1,$2)/ge;
++
++	print $_,"\n";
++}
++
++close STDOUT or die "error closing STDOUT: $!";
+--- /dev/null
++++ third_party/openssl/crypto/sha/asm/arm-xlate.pl
+@@ -0,0 +1,245 @@
++#! /usr/bin/env perl
++# Copyright 2015-2025 The OpenSSL Project Authors. All Rights Reserved.
++#
++# Licensed under the Apache License 2.0 (the "License").  You may not use
++# this file except in compliance with the License.  You can obtain a copy
++# in the file LICENSE in the source distribution or at
++# https://www.openssl.org/source/license.html
++
++use strict;
++
++my $flavour = shift;
++my $output = shift;
++open STDOUT,">$output" || die "can't open $output: $!";
++
++$flavour = "linux32" if (!$flavour or $flavour eq "void");
++
++my %GLOBALS;
++my $dotinlocallabels=($flavour=~/linux/)?1:0;
++
++################################################################
++# directives which need special treatment on different platforms
++################################################################
++my $arch = sub {
++    if ($flavour =~ /linux/)	{ ".arch\t".join(',',@_); }
++    elsif ($flavour =~ /win64/) { ".arch\t".join(',',@_); }
++    else			{ ""; }
++};
++my $fpu = sub {
++    if ($flavour =~ /linux/)	{ ".fpu\t".join(',',@_); }
++    else			{ ""; }
++};
++my $rodata = sub {
++    SWITCH: for ($flavour) {
++	/linux/		&& return ".section\t.rodata";
++	/ios/		&& return ".section\t__TEXT,__const";
++	/win64/		&& return ".section\t.rodata";
++	last;
++    }
++};
++my $previous = sub {
++    SWITCH: for ($flavour) {
++	/linux/		&& return ".previous";
++	/ios/		&& return ".previous";
++	/win64/		&& return ".text";
++	last;
++    }
++};
++my $hidden = sub {
++    if ($flavour =~ /ios/)	{ ".private_extern\t".join(',',@_); }
++    elsif ($flavour =~ /win64/) { ""; }
++    else			{ ".hidden\t".join(',',@_); }
++};
++my $comm = sub {
++    my @args = split(/,\s*/,shift);
++    my $name = @args[0];
++    my $global = \$GLOBALS{$name};
++    my $ret;
++
++    if ($flavour =~ /ios32/)	{
++	$ret = ".comm\t_$name,@args[1]\n";
++	$ret .= ".non_lazy_symbol_pointer\n";
++	$ret .= "$name:\n";
++	$ret .= ".indirect_symbol\t_$name\n";
++	$ret .= ".long\t0";
++	$name = "_$name";
++    } else			{ $ret = ".comm\t".join(',',@args); }
++
++    $$global = $name;
++    $ret;
++};
++my $globl = sub {
++    my $name = shift;
++    my $global = \$GLOBALS{$name};
++    my $ret;
++
++    SWITCH: for ($flavour) {
++	/ios/		&& do { $name = "_$name";
++				last;
++			      };
++    }
++
++    $ret = ".globl	$name" if (!$ret);
++    $$global = $name;
++    $ret;
++};
++my $global = $globl;
++my $extern = sub {
++    &$globl(@_);
++    return;	# return nothing
++};
++my $type = sub {
++    if ($flavour =~ /linux/)	{ ".type\t".join(',',@_); }
++    elsif ($flavour =~ /ios32/)	{ if (join(',',@_) =~ /(\w+),%function/) {
++					"#ifdef __thumb2__\n".
++					".thumb_func	$1\n".
++					"#endif";
++				  }
++			        }
++    elsif ($flavour =~ /win64/) { if (join(',',@_) =~ /(\w+),%function/) {
++                # See https://sourceware.org/binutils/docs/as/Pseudo-Ops.html
++                # Per https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#coff-symbol-table,
++                # the type for functions is 0x20, or 32.
++                ".def $1\n".
++                "   .type 32\n".
++                ".endef";
++            }
++        }
++    else			{ ""; }
++};
++my $size = sub {
++    if ($flavour =~ /linux/)	{ ".size\t".join(',',@_); }
++    else			{ ""; }
++};
++my $inst = sub {
++    if ($flavour =~ /linux/)    { ".inst\t".join(',',@_); }
++    else                        { ".long\t".join(',',@_); }
++};
++my $asciz = sub {
++    my $line = join(",",@_);
++    if ($line =~ /^"(.*)"$/)
++    {	".byte	" . join(",",unpack("C*",$1),0) . "\n.align	2";	}
++    else
++    {	"";	}
++};
++
++my $adrp = sub {
++    my ($args,$comment) = split(m|\s*//|,shift);
++    if ($flavour =~ /ios64/) {
++        "\tadrp\t$args\@PAGE";
++    } elsif ($flavour =~ /linux/) {
++        #
++        # there seem to be two forms of 'addrp' instruction
++        # to calculate offset:
++	#    addrp	x3,x3,:lo12:Lrcon
++        # and alternate form:
++	#    addrp	x3,x3,:#lo12:Lrcon
++        # the '#' is mandatory for some compilers
++        # so make sure our asm always uses '#' here.
++        #
++        $args =~ s/(\w+)#?:lo2:(\.?\w+)/$1#:lo2:$2/;
++        if ($flavour =~ /linux32/) {
++            "\tadr\t$args";
++        } else {
++            "\tadrp\t$args";
++        }
++    }
++} if (($flavour =~ /ios64/) || ($flavour =~ /linux/));
++
++sub range {
++  my ($r,$sfx,$start,$end) = @_;
++
++    join(",",map("$r$_$sfx",($start..$end)));
++}
++
++sub expand_line {
++  my $line = shift;
++  my @ret = ();
++
++    pos($line)=0;
++
++    while ($line =~ m/\G[^@\/\{\"]*/g) {
++	if ($line =~ m/\G(@|\/\/|$)/gc) {
++	    last;
++	}
++	elsif ($line =~ m/\G\{/gc) {
++	    my $saved_pos = pos($line);
++	    $line =~ s/\G([rdqv])([0-9]+)([^\-]*)\-\1([0-9]+)\3/range($1,$3,$2,$4)/e;
++	    pos($line) = $saved_pos;
++	    $line =~ m/\G[^\}]*\}/g;
++	}
++	elsif ($line =~ m/\G\"/gc) {
++	    $line =~ m/\G[^\"]*\"/g;
++	}
++    }
++
++    $line =~ s/\b(\w+)/$GLOBALS{$1} or $1/ge;
++
++    if ($flavour =~ /ios64/) {
++	$line =~ s/#?:lo12:(\w+)/$1\@PAGEOFF/;
++    } elsif($flavour =~ /linux/) {
++        #
++        # make '#' mandatory for :lo12: (similar to adrp above)
++        #
++	$line =~ s/#?:lo12:(\.?\w+)/\#:lo12:$1/;
++    }
++
++    return $line;
++}
++
++while(my $line=<>) {
++
++    if ($line =~ m/^\s*(#|@|\/\/)/)	{ print $line; next; }
++
++    $line =~ s|/\*.*\*/||;	# get rid of C-style comments...
++    $line =~ s|^\s+||;		# ... and skip whitespace in beginning...
++    $line =~ s|\s+$||;		# ... and at the end
++
++    {
++	$line =~ s|[\b\.]L(\w{2,})|L$1|g;	# common denominator for Locallabel
++	$line =~ s|\bL(\w{2,})|\.L$1|g	if ($dotinlocallabels);
++    }
++
++    {
++	if ($line =~ s|(^[\.\w]+)\:\s*||) {
++	    my $label = $1;
++	    printf "%s:",($GLOBALS{$label} or $label);
++	}
++    }
++
++    if ($line !~ m/^[#@]/) {
++	$line =~ s|^\s*(\.?)(\S+)\s*||;
++	my $c = $1; $c = "\t" if ($c eq "");
++	my $mnemonic = $2;
++	my $opcode;
++	if ($mnemonic =~ m/([^\.]+)\.([^\.]+)/) {
++	    $opcode = eval("\$$1_$2");
++	} else {
++	    $opcode = eval("\$$mnemonic");
++	}
++
++	my $arg=expand_line($line);
++
++	if (ref($opcode) eq 'CODE') {
++		$line = &$opcode($arg);
++	} elsif ($mnemonic)         {
++		$line = $c.$mnemonic;
++		$line.= "\t$arg" if ($arg ne "");
++	}
++    }
++
++    # ldr REG, #VALUE psuedo-instruction - avoid clang issue with Neon registers
++    #
++    if ($line =~ /^\s*ldr\s+([qd]\d\d?)\s*,\s*=(\w+)/i) {
++        # Immediate load via literal pool into qN or DN - clang max is 2^32-1
++        my ($reg, $value) = ($1, $2);
++        # If $value is hex, 0x + 8 hex chars = 10 chars total will be okay
++        # If $value is decimal, 2^32 - 1 = 4294967295 will be okay (also 10 chars)
++        die("$line: immediate load via literal pool into $reg: value too large for clang - redo manually") if length($value) > 10;
++    }
++
++    print $line if ($line);
++    print "\n";
++}
++
++close STDOUT or die "error closing STDOUT: $!";

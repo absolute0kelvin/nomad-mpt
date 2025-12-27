@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "nomad-mpt-sys",
+]
+resolver = "2"

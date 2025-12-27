@@ -1,0 +1,81 @@
+// Copyright (C) 2025 Category Labs, Inc.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#pragma once
+
+/**
+ * @file
+ *
+ * Defines convenience functions that are useful in most event ring programs,
+ * but which are not part of the core API
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+enum monad_event_content_type : uint16_t;
+
+/// Arguments for the `monad_event_ring_init_simple` function
+struct monad_event_ring_simple_config
+{
+    uint8_t descriptors_shift;
+    uint8_t payload_buf_shift;
+    uint16_t context_large_pages;
+    enum monad_event_content_type content_type;
+    uint8_t const *schema_hash;
+};
+
+/// "All in one" convenience event ring file init for simple cases: given an
+/// event ring fd and the required options, calculate the required size of the
+/// event ring, call fallocate(2) to ensure the storage is available, then call
+/// monad_event_ring_init_file
+int monad_event_ring_init_simple(
+    struct monad_event_ring_simple_config const *, int ring_fd,
+    off_t ring_offset, char const *error_name);
+
+/// Check that the event ring content type and schema hash match the assumed
+/// values
+int monad_event_ring_check_content_type(
+    struct monad_event_ring const *, enum monad_event_content_type,
+    uint8_t const *schema_hash);
+
+/// Find the pid of every process that has opened the given event ring file
+/// descriptor for writing; this is slow, and somewhat brittle (it crawls
+/// proc(5) file descriptor tables so depends on your access(2) permissions)
+int monad_event_ring_find_writer_pids(int ring_fd, pid_t *pids, size_t *size);
+
+/// Given a path to a file (which does not need to exist), check if the
+/// associated file system supports that file being mmap'ed with MAP_HUGETLB
+int monad_check_path_supports_map_hugetlb(char const *path, bool *supported);
+
+/// Open a directory fd, for use in openat(2), to the default subdirectory on
+/// a hugetlbfs filesystem that is used to hold event ring files; also computes
+/// the full path to this directory; this is a wrapper around the generic API
+/// function `monad_hugetlbfs_open_dir_fd`
+int monad_event_open_ring_dir_fd(
+    int *dirfd, char *namebuf, size_t namebuf_size);
+
+constexpr char MONAD_EVENT_DEFAULT_RING_DIR[] = "event-rings";
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

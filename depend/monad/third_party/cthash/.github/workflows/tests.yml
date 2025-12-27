@@ -1,0 +1,88 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  appleclang:
+    strategy:
+      matrix:
+        macos: [15]
+      fail-fast: false
+    name: "AppleClang (MacOS ${{ matrix.macos }})"
+    runs-on: macos-${{ matrix.macos }}
+    steps:
+      - uses: actions/checkout@v5
+        with: 
+          submodules: "true"
+      - run: c++ -v
+      - name: "Configure"
+        run: cmake . -G Ninja -B build -DCTHASH_TESTS=ON -DCTHASH_COVERAGE=OFF
+      - name: "Build"
+        run: cmake --build build --target test --verbose
+  gcc:
+    strategy:
+      matrix:
+        gcc: [13]
+      fail-fast: false
+    name: "GCC ${{ matrix.gcc }}"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Install GCC"
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: ${{ matrix.gcc }}
+      - uses: actions/checkout@v5
+        with: 
+          submodules: "true"
+      - run: c++ -v
+      - name: "Configure"
+        run: cmake . -G Ninja -B build -DCTHASH_TESTS=ON -DCTHASH_COVERAGE=OFF -DCMAKE_CXX_COMPILER=`which g++-${{ matrix.gcc }}`
+      - name: "Build"
+        run: cmake --build build --target test --verbose
+  clang:
+    strategy:
+      matrix:
+        clang: [19]
+        stdlib: ["libc++", "libstdc++"]
+      fail-fast: false
+    name: "Clang ${{ matrix.clang }} (${{ matrix.stdlib }})"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Install Clang"
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: ${{ matrix.clang }}
+      - name: "Install libc++"
+        if: ${{ matrix.stdlib == 'libc++' }}
+        run: sudo apt-get install cmake libc++abi-${{ matrix.clang }}-dev libc++1-${{ matrix.clang }} libc++-${{ matrix.clang }}-dev
+      - uses: actions/checkout@v5
+        with: 
+          submodules: "true"
+      - run: c++ -v
+      - name: "Configure"
+        run: cmake . -G Ninja -B build -DCTHASH_TESTS=ON -DCTHASH_COVERAGE=OFF -DCMAKE_CXX_COMPILER=`which clang++` -DCMAKE_CXX_FLAGS=-stdlib=${{ matrix.stdlib }}
+      - name: "Build"
+        run: cmake --build build --target test --verbose
+  msvc:
+    strategy:
+      matrix:
+        version: ["", "14.40"]
+        platform: ["amd64_x86", "amd64", "arm64"]
+      fail-fast: false
+    name: "MSVC ${{ matrix.platform }} ${{ matrix.version }}"
+    runs-on: windows-2022
+    steps:
+      - name: Add MSVC ${{ matrix.version }} to PATH
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          toolset: ${{ matrix.version }}
+          platform: ${{ matrix.platform }}
+      - name: "Print cl.exe version"
+        run: cl.exe
+      - name: "Install Ninja & CMake"
+        run: choco install ninja cmake
+      - uses: actions/checkout@v5
+        with: 
+          submodules: "true"
+      - name: "Configure"
+        run: cmake . -G Ninja -B build -DCTHASH_TESTS=ON -DCTHASH_COVERAGE=OFF
+      - name: "Build"
+        run: cmake --build build --target test --verbose

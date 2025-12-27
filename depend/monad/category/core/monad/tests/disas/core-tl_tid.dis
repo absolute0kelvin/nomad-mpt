@@ -1,0 +1,8 @@
+0000000000000000 <init_tl_tid>:
+   0:	50                      	push   %rax
+   1:	e8 00 00 00 00          	call   6 <init_tl_tid+0x6>
+			2: R_X86_64_PLT32	gettid-0x4
+   6:	64 89 04 25 00 00 00 00 	mov    %eax,%fs:0x0
+			a: R_X86_64_TPOFF32	tl_tid
+   e:	58                      	pop    %rax
+   f:	c3                      	ret    
